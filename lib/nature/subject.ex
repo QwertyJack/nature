@@ -85,9 +85,19 @@ defmodule Nature.Subject do
     )
     |> case do
       [] -> :ok
-      subs -> subs
-      |> Enum.each(&(&1 |> explorer))
-      fill()
+      subs -> #Enum.each(&(&1 |> explorer))
+        cnt = div(length(subs) - 1, nthreads()) + 1
+        subs
+        |> Enum.chunk(cnt, cnt, [])
+        |> Enum.map(&Task.async(fn ->
+          &1
+          |> Enum.each(fn item ->
+            explorer(item)
+          end)
+        end))
+        |> Enum.map(&Task.await(&1, :infinity))
+
+        fill()
     end
   end
 
