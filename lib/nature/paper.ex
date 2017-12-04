@@ -23,50 +23,86 @@ defmodule Nature.Paper do
   alias Nature.Repo
   import Nature.Util
 
-  defp _mget(page, cmd) do
-    page
-    |> Meeseeks.one(cmd)
-    |> Meeseeks.attr("content")
-  end
-
-  defp _mgets(page, cmd) do
-    page
-    |> Meeseeks.all(cmd)
-    |> Enum.map(&(Meeseeks.attr(&1, "content")))
-  end
-
   defp _goto(paper) do
-    Logger.info "Crawling paper at #{paper.link}"
-    page = paper.link |> get
+    try do
+      Logger.info "Paper #{paper.link}"
+      page = paper.link |> get
 
-    title = page |> _mget(xpath("//meta[@name='dc.title']"))
-    auths = page |> _mgets(xpath("//meta[@name='dc.creator']"))
-    from = page |> _mget(xpath("//meta[@name='prism.publicationName']"))
-    doi = page |> _mget(xpath("//meta[@name='DOI']"))
-    labels = page |> _mget(xpath("//meta[@name='WT.z_subject_term']")) |> String.split(";")
-    date = page |> _mget(xpath("//meta[@name='dc.date']"))
-    abstract = page |> _mget(xpath("//meta[@name='dc.description']")) |> String.replace(~r/(\r|\n)\s+\+/, "")
+      title =     page |> mget(xpath("//meta[@name='dc.title']"))
+      auths =     page |> mgets(xpath("//meta[@name='dc.creator']"))
+      from =      page |> mget(xpath("//meta[@name='prism.publicationName']"))
+      doi =       page |> mget(xpath("//meta[@name='DOI']"))
+      labels =    page |> mget(xpath("//meta[@name='WT.z_subject_term']")) |> String.split(";")
+      date =      page |> mget(xpath("//meta[@name='dc.date']"))
+      abstract =  page |> mget(xpath("//meta[@name='dc.description']")) |> String.replace(~r/(\r|\n)\s+\+/, "")
 
-    Repo.get_by(Nature.Paper, link: paper.link)
-    |> Ecto.Changeset.change(
-      title: title,
-      auths: auths,
-      from: from,
-      doi: doi,
-      labels: labels,
-      date: date,
-      abstract: abstract,
-    )
-    |> Repo.update!
-    Logger.info "Done paper: #{paper.link}"
+      Repo.get_by(Nature.Paper, id: paper.id)
+      |> Ecto.Changeset.change(
+        title: title,
+        auths: auths,
+        from: from,
+        doi: doi,
+        labels: labels,
+        date: date,
+        abstract: abstract,
+      )
+      |> Repo.update!
+      Logger.info "Paper done: #{paper.link}"
+    rescue
+      FunctionClauseError -> 
+        Logger.warn "Paper Page imcomplete: #{paper.link}"
+        _goto(paper)
+    end
   end
 
-  def main(subs \\ ["Chemistry"]) do
-    papers = Repo.all(from p in Nature.Paper, where: (p.labels == type(^[], {:array, :string}) and p.subject in ^subs), limit: @limit)
+  defp _filter(subs) do
+    Repo.all(
+      from p in Nature.Paper,
+      where: (
+        p.labels == type(^[], {:array, :string}) and
+        p.subject in ^subs
+      ),
+      limit: @limit
+    )
+  end
+
+  def bio do
+    Repo.all(
+      from s in Nature.Subject,
+      where: (
+        "Biological sciences" in s.parent
+      ),
+      select: s.name
+    )
+  end
+
+  def med do
+    Repo.all(
+      from s in Nature.Subject,
+      where: (
+        "Health sciences" in s.parent
+      ),
+      select: s.name
+    )
+  end
+
+  def che do
+    ["Chemistry"]
+  end
+
+  def bcm, do: bio() ++ med() ++ che() |> Enum.uniq
+
+  def main(subs \\ nil) do
+    subs = case subs do
+      nil -> bcm()
+      [] -> bcm()
+      s -> s
+    end
+    papers = _filter(subs)
 
     case papers do
       [] -> 
-        Logger.info "Jobs #{subs} all done."
+        Logger.info "Paper under #{subs} all done."
       _ -> 
         cnt = div(length(papers) - 1, nthreads()) + 1
         papers

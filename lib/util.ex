@@ -2,28 +2,54 @@ defmodule Nature.Util do
   require Logger
 
   def nthreads, do: 6
-  def url, do: "https://www.nature.com/subjects"
   def domain, do: "https://www.nature.com"
 
   @doc "HTTP GET wrapper"
-  def http_get(u, follow \\ false, cnt \\ 0) do
+  def http_get(u, cnt \\ 0)
+  def http_get(u, 10), do: :http_fail
+  def http_get(u, cnt) do
     try do
-      HTTPoison.get!(u, [], [follow_redirect: follow])
+      resp = HTTPoison.get!(u)
+      case resp.status_code do
+        500 -> :http_fail
+        _ -> resp
+      end
     rescue
       HTTPoison.Error ->
         cnt = cnt + 1
-        Logger.debug "HTTP fail for #{cnt} times, retry ..."
-        http_get(u, follow, cnt)
+        Logger.debug "HTTP fail #{cnt} times, retry ... #{u}"
+        :timer.sleep 100
+        http_get(u, cnt)
     end
   end
 
-  @doc "Visit nature.com, 1st 303, then follow 302 until the end"
+  @doc "Visit nature.com, follow 30x until the end"
   def get(u) do
-    ret = http_get(u, false).headers
-          |> Enum.filter(fn({k, _}) -> k == "Location" end)
-          |> hd
-          |> elem(1)
-          |> http_get(true)
-    ret.body
+    resp = http_get(u)
+    case resp do
+      :http_fail -> :http_fail
+      _ ->
+        resp.headers
+        |> Enum.filter(fn({k, _}) -> k == "Location" end)
+        |> case do
+          [] -> resp.body
+          [h] -> elem(h, 1) |> get()
+        end
+    end
   end
+
+  @doc "Get meta of `cmd`"
+  def mget(page, cmd) do
+    page
+    |> Meeseeks.one(cmd)
+    |> Meeseeks.attr("content")
+  end
+
+  @doc "Get metas of `cmd`"
+  def mgets(page, cmd) do
+    page
+    |> Meeseeks.all(cmd)
+    |> Enum.map(&(Meeseeks.attr(&1, "content")))
+  end
+
 end
