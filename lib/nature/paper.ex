@@ -23,7 +23,9 @@ defmodule Nature.Paper do
   alias Nature.Repo
   import Nature.Util
 
-  defp _goto(paper) do
+  defp _goto(paper, cnt \\ 0)
+  defp _goto(_, 5), do: :paper_fail
+  defp _goto(paper, cnt) do
     try do
       Logger.info "Paper #{paper.link}"
       page = paper.link |> get
@@ -51,7 +53,7 @@ defmodule Nature.Paper do
     rescue
       FunctionClauseError -> 
         Logger.warn "Paper Page imcomplete: #{paper.link}"
-        _goto(paper)
+        _goto(paper, cnt + 1)
     end
   end
 

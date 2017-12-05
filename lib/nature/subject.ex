@@ -12,7 +12,7 @@ defmodule Nature.Subject do
     timestamps()
   end
 
-  @limit 10
+  @limit 30
   require Logger
   import Ecto.Query
   import Meeseeks.XPath
@@ -101,6 +101,18 @@ defmodule Nature.Subject do
     end
   end
 
+  def check do
+    Repo.all(
+      from sub in Nature.Subject,
+      where: sub.progress < -1
+    )
+    |> case do
+      [] -> :ok
+      subs -> Enum.each(subs, &(&1 |> explorer))
+    end
+    fill()
+  end
+
   def explorer(sub) do
     Logger.info "Subject #{sub.link}"
     page = sub.link |> get
@@ -125,6 +137,7 @@ defmodule Nature.Subject do
         |> Ecto.Changeset.change(
           name: name,
           description: description,
+          progress: -1,
         )
         |> Repo.update!
         name
@@ -132,6 +145,7 @@ defmodule Nature.Subject do
         Repo.get_by(Nature.Subject, id: sub.id)
         |> Ecto.Changeset.change(
           description: description,
+          progress: -1,
         )
         |> Repo.update!
         sub.name
