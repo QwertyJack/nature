@@ -24,11 +24,20 @@ defmodule Nature.Paper do
   import Nature.Util
 
   defp _goto(paper, cnt \\ 0)
-  defp _goto(_, 5), do: :paper_fail
+  defp _goto(paper, 5) do
+    Repo.get_by(Nature.Paper, id: paper.id)
+    |> Ecto.Changeset.change(doi: "")
+    |> Repo.update!
+    Logger.info "Paper fail: #{paper.id}"
+  end
   defp _goto(paper, cnt) do
     try do
       Logger.info "Paper #{paper.link}"
       page = paper.link |> get
+
+      if page == :http_fail do
+        Logger.error "Paper wrong: #{paper.id}"
+      end
 
       title =     page |> mget(xpath("//meta[@name='dc.title']"))
       auths =     page |> mgets(xpath("//meta[@name='dc.creator']"))
@@ -51,7 +60,7 @@ defmodule Nature.Paper do
       |> Repo.update!
       Logger.info "Paper done: #{paper.link}"
     rescue
-      FunctionClauseError -> 
+      FunctionClauseError ->
         Logger.warn "Paper Page imcomplete: #{paper.link}, ##{cnt}"
         _goto(paper, cnt + 1)
     end
@@ -62,7 +71,8 @@ defmodule Nature.Paper do
       from p in Nature.Paper,
       where: (
         p.labels == type(^[], {:array, :string}) and
-        p.subject in ^subs
+        p.subject in ^subs and
+        is_nil p.doi
       ),
       limit: @limit
     )

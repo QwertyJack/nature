@@ -48,9 +48,7 @@ defmodule HTTP do
         require Logger
         Logger.error "#{code}: #{body}"
         :http_fail
-      {_, %HTTPoison.Error{id: id, reason: reason}} ->
-        require Logger
-        Logger.error "#{id}: #{reason}"
+      _ ->
         :http_fail
     end
   end
