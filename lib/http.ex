@@ -40,7 +40,11 @@ defmodule HTTP do
                                      |> List.delete(nil)
                                      |> Enum.join("; ")
                                      ]) # add any new cookies along with the previous ones to the request
-        :ets.insert(:nature, {:cookie, options[:hackney][:cookie]})
+        if Regex.match?(~r/idp.nature.com/, location) do
+          :ets.insert(:nature, {:cookie, options[:hackney][:cookie]})
+          require Logger
+          Logger.debug "HTTP renew cookie"
+        end
         get(location, headers, options)
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} -> body
       {_, %HTTPoison.Response{status_code: code}} when code in [500, 503] -> :http_fail
