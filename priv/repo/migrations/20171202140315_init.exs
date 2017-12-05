@@ -23,6 +23,7 @@ defmodule Nature.Repo.Migrations.Init do
       add(:labels, {:array, :string}, default: [])
       add(:date, :string)
       add(:abstract, :text)
+      add(:desc, :text)
 
       timestamps()
     end
