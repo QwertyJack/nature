@@ -14,6 +14,9 @@ defmodule Nature.Application do
       Nature.Repo,
     ]
 
+    # record cookie
+    :ets.new :nature, [:public, :ordered_set, :named_table]
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Nature.Supervisor]

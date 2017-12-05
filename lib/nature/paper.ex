@@ -52,7 +52,7 @@ defmodule Nature.Paper do
       Logger.info "Paper done: #{paper.link}"
     rescue
       FunctionClauseError -> 
-        Logger.warn "Paper Page imcomplete: #{paper.link}"
+        Logger.warn "Paper Page imcomplete: #{paper.link}, ##{cnt}"
         _goto(paper, cnt + 1)
     end
   end
@@ -71,9 +71,7 @@ defmodule Nature.Paper do
   def bio do
     Repo.all(
       from s in Nature.Subject,
-      where: (
-        "Biological sciences" in s.parent
-      ),
+      where: "Biological sciences" in s.parent,
       select: s.name
     )
   end
@@ -81,31 +79,27 @@ defmodule Nature.Paper do
   def med do
     Repo.all(
       from s in Nature.Subject,
-      where: (
-        "Health sciences" in s.parent
-      ),
+      where: "Health sciences" in s.parent,
       select: s.name
     )
   end
 
-  def che do
-    ["Chemistry"]
-  end
-
-  def bcm, do: bio() ++ med() ++ che() |> Enum.uniq
+  def che, do: ["Chemistry"]
+  def bmc, do: bio() ++ med() ++ che() |> Enum.uniq
+  def bm, do: bio() ++ med() |> Enum.uniq
 
   def main(subs \\ nil) do
     subs = case subs do
-      nil -> bcm()
-      [] -> bcm()
+      nil -> bmc()
+      [] -> bmc()
       s -> s
     end
     papers = _filter(subs)
 
     case papers do
-      [] -> 
+      [] ->
         Logger.info "Paper under #{subs} all done."
-      _ -> 
+      _ ->
         cnt = div(length(papers) - 1, nthreads()) + 1
         papers
         |> Enum.chunk(cnt, cnt, [])
