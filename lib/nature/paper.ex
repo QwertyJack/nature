@@ -47,7 +47,10 @@ defmodule Nature.Paper do
       labels =    page |> mget(xpath("//meta[@name='WT.z_subject_term']")) |> String.split(";")
       date =      page |> mget(xpath("//meta[@name='dc.date']"))
       desc =      page |> mget(xpath("//meta[@name='dc.description']")) |> String.replace(~r/(\r|\n)\s+\+/, "")
-      abstract =  page |> Meeseeks.one(xpath("//div[@id='abstract-content']")) |> Meeseeks.html
+      abstract =  (
+        page |> Meeseeks.one(xpath("//div[@id='abstract-content']"))
+        || page |> Meeseeks.one(xpath("//div[@id='Abs1-content']"))
+      ) |> Meeseeks.html
 
       Repo.get_by(Nature.Paper, id: paper.id)
       |> Ecto.Changeset.change(
