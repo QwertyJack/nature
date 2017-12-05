@@ -43,7 +43,7 @@ defmodule HTTP do
         if Regex.match?(~r/idp.nature.com/, location) do
           :ets.insert(:nature, {:cookie, options[:hackney][:cookie]})
           require Logger
-          Logger.debug "HTTP renew cookie"
+          Logger.debug "HTTP renew cookie: #{(:ets.lookup :nature, :cookie)[:cookie]}"
         end
         get(location, headers, options)
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} -> body
