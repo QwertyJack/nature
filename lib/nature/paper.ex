@@ -50,6 +50,7 @@ defmodule Nature.Paper do
       abstract =  (
         page |> Meeseeks.one(xpath("//div[@id='abstract-content']"))
         || page |> Meeseeks.one(xpath("//div[@id='Abs1-content']"))
+        || page |> Meeseeks.one(xpath("//div[@itemprop='description']"))
       ) |> Meeseeks.html
 
       Repo.get_by(Nature.Paper, id: paper.id)
@@ -67,6 +68,9 @@ defmodule Nature.Paper do
       Logger.info "Paper done: #{paper.link}"
     rescue
       FunctionClauseError ->
+        Logger.warn "Paper Page imcomplete: #{paper.link}, ##{cnt}"
+        _goto(paper, cnt + 1)
+      RuntimeError ->
         Logger.warn "Paper Page imcomplete: #{paper.link}, ##{cnt}"
         _goto(paper, cnt + 1)
     end
@@ -118,6 +122,10 @@ defmodule Nature.Paper do
       _ ->
         cnt = div(length(papers) - 1, nthreads()) + 1
         papers
+        |> (fn [h|t] ->
+          _goto(h)
+          t
+        end).()
         |> Enum.chunk(cnt, cnt, [])
         |> Enum.map(&Task.async(fn ->
           &1
